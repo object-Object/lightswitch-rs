@@ -11,8 +11,8 @@ This is the API I wrote to control my light switch from my iPhone, using a Raspb
 1. 3D print the [bracket](https://www.thingiverse.com/thing:5217857), install an MG90S servo and a Raspberry Pi on it, and mount it to your light switch.
 2. Install the correct toolchain for cross compiling to your Raspberry Pi.
 3. Clone the repo. If necessary, change the constants in the `servo` module to match the datasheet of the servo you're using.
-4. Build the crate, then transfer the executable and the `Rocket.toml` file to your Pi.
-5. Run the executable to generate an API key, found in the `config.toml` file.
+4. Build the crate, then transfer the executable and the `Rocket.toml` file to your Pi. [Enable hardware PWM](https://docs.golemparts.com/rppal/0.13.1/rppal/pwm/index.html#pwm-channels) on your Pi.
+5. Run the executable to generate an API key, found in the `config.toml` file. You can keep it running however you wish (I use [PM2](https://pm2.keymetrics.io)).
 
 ## Usage
 
