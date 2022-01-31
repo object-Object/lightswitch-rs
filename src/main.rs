@@ -58,18 +58,9 @@ pub mod config {
 
     #[derive(Debug, Serialize, Deserialize, FromForm)]
     pub struct FlipSettings {
-        pub delay: Option<u64>, // ms
+        pub delay: u64, // ms
         #[field(validate = servo_value_validate())]
-        pub servo_value: Option<f64>,
-    }
-
-    impl FlipSettings {
-        pub fn update(&mut self, other: &FlipSettings) {
-            *self = Self {
-                delay: other.delay.or(self.delay),
-                servo_value: other.servo_value.or(self.servo_value),
-            };
-        }
+        pub servo_value: f64,
     }
 
     #[derive(Debug, Serialize, Deserialize, FromForm)]
@@ -88,14 +79,11 @@ pub mod config {
         pub off_settings: FlipSettings,
     }
 
-    fn servo_value_validate<'v>(servo_value_opt: &Option<f64>) -> form::Result<'v, ()> {
-        if let Some(servo_value) = servo_value_opt {
-            if *servo_value < -1.0 || *servo_value > 1.0 {
-                return Err(form::Error::validation(
-                    "invalid servo value, must be between -1 and 1",
-                )
-                .into());
-            }
+    fn servo_value_validate<'v>(servo_value: &f64) -> form::Result<'v, ()> {
+        if *servo_value < -1.0 || *servo_value > 1.0 {
+            return Err(
+                form::Error::validation("invalid servo value, must be between -1 and 1").into(),
+            );
         }
         Ok(())
     }
@@ -130,12 +118,12 @@ pub mod config {
                     idle_servo_value: 0.0,
                     scheduled_flip: None,
                     on_settings: FlipSettings {
-                        delay: Some(0),
-                        servo_value: Some(0.0),
+                        delay: 0,
+                        servo_value: 0.0,
                     },
                     off_settings: FlipSettings {
-                        delay: Some(0),
-                        servo_value: Some(0.0),
+                        delay: 0,
+                        servo_value: 0.0,
                     },
                     api_key: generate_api_key(),
                 };
@@ -184,8 +172,8 @@ pub mod servo {
         config: &Config,
         pwm: &Pwm,
     ) -> Result<(), (Status, String)> {
-        set(settings.servo_value.unwrap(), pwm)?; // this should never be None
-        time::sleep(Duration::from_millis(settings.delay.unwrap())).await;
+        set(settings.servo_value, pwm)?; // this should never be None
+        time::sleep(Duration::from_millis(settings.delay)).await;
         set(config.idle_servo_value, pwm)
     }
 }
@@ -196,7 +184,7 @@ pub mod api {
         servo,
     };
     use rocket::{
-        form::{Form, Strict},
+        form::Form,
         http::Status,
         request::{FromRequest, Outcome, Request},
         serde::json::Json,
@@ -273,7 +261,7 @@ pub mod api {
 
         #[patch("/settings/test", data = "<settings>")]
         pub async fn settings_test(
-            settings: Form<Strict<FlipSettings>>,
+            settings: Form<FlipSettings>,
             _key: ApiKey,
             pwm: &State<Arc<Pwm>>,
         ) -> Result<(), (Status, String)> {
@@ -286,7 +274,7 @@ pub mod api {
             _key: ApiKey,
         ) -> Result<(), (Status, String)> {
             let mut config = config::read_config_file().await?;
-            config.on_settings.update(&settings);
+            config.on_settings = settings.into_inner();
             config::write_config_file(&config).await
         }
 
@@ -296,7 +284,7 @@ pub mod api {
             _key: ApiKey,
         ) -> Result<(), (Status, String)> {
             let mut config = config::read_config_file().await?;
-            config.off_settings.update(&settings);
+            config.off_settings = settings.into_inner();
             config::write_config_file(&config).await
         }
 
@@ -314,11 +302,22 @@ pub mod api {
 
         #[patch("/schedule", data = "<scheduled_flip>")]
         pub async fn schedule(
-            scheduled_flip: Form<Strict<ScheduledFlip>>,
+            scheduled_flip: Form<ScheduledFlip>,
             _key: ApiKey,
         ) -> Result<(), (Status, String)> {
             let mut config = config::read_config_file().await?;
-            config.scheduled_flip = Some(scheduled_flip.into_inner().into_inner());
+            config.scheduled_flip = Some(scheduled_flip.into_inner());
+            config::write_config_file(&config).await
+        }
+    }
+
+    pub mod delete {
+        use super::*;
+
+        #[delete("/schedule")]
+        pub async fn schedule(_key: ApiKey) -> Result<(), (Status, String)> {
+            let mut config = config::read_config_file().await?;
+            config.scheduled_flip = None;
             config::write_config_file(&config).await
         }
     }
@@ -366,6 +365,7 @@ async fn rocket() -> _ {
                 api::patch::settings_off,
                 api::patch::settings_idle,
                 api::patch::schedule,
+                api::delete::schedule,
             ],
         )
         .manage(pwm)

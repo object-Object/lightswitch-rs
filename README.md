@@ -25,6 +25,4 @@ You can control the light switch by making requests to endpoints at the Raspberr
 ## Todo
 
 - Bug: servo sometimes twitches slightly, not sure if I can stop that
-- Bug: `PATCH /settings/test` panics if fields are missing, instead of returning a 422 error like the docs say it should
-- Add endpoint to clear schedule
 - Create frontend
