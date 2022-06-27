@@ -162,9 +162,30 @@ pub mod servo {
         )
     }
 
-    pub fn set(servo_value: f64, pwm: &Pwm) -> Result<(), (Status, String)> {
+    fn to_500(e: impl ToString) -> (Status, String) {
+        (Status::InternalServerError, e.to_string())
+    }
+
+    fn enable(pwm: &Pwm) -> Result<(), (Status, String)> {
+        pwm.enable().map_err(to_500)
+    }
+
+    fn disable(pwm: &Pwm) -> Result<(), (Status, String)> {
+        pwm.disable().map_err(to_500)
+    }
+
+    fn set(servo_value: f64, pwm: &Pwm) -> Result<(), (Status, String)> {
         pwm.set_pulse_width(calc_pulse_width(servo_value))
-            .map_err(|e| (Status::InternalServerError, e.to_string()))
+            .map_err(to_500)
+    }
+
+    pub async fn set_value(servo_value: f64, pwm: &Pwm) -> Result<(), (Status, String)> {
+        enable(pwm)?;
+
+        set(servo_value, pwm)?;
+        time::sleep(Duration::from_millis(500)).await;
+
+        disable(pwm)
     }
 
     pub async fn flip(
@@ -172,9 +193,15 @@ pub mod servo {
         config: &Config,
         pwm: &Pwm,
     ) -> Result<(), (Status, String)> {
-        set(settings.servo_value, pwm)?; // this should never be None
+        enable(pwm)?;
+
+        set(settings.servo_value, pwm)?;
         time::sleep(Duration::from_millis(settings.delay)).await;
-        set(config.idle_servo_value, pwm)
+
+        set(config.idle_servo_value, pwm)?;
+        time::sleep(Duration::from_millis(500)).await;
+
+        disable(pwm)
     }
 }
 
@@ -296,7 +323,7 @@ pub mod api {
         ) -> Result<(), (Status, String)> {
             let mut config = config::read_config_file().await?;
             config.idle_servo_value = *value;
-            servo::set(*value, pwm)?;
+            servo::set_value(*value, pwm).await?;
             config::write_config_file(&config).await
         }
 
