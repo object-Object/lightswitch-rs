@@ -1,18 +1,23 @@
 # lightswitch-rs
 
-This is the API I wrote to control my light switch from my iPhone, using a Raspberry Pi, a servo, and a [3D printed bracket](https://www.thingiverse.com/thing:5217857).
+This is the API I wrote to control my light switch from my iPhone, using a Raspberry Pi, a servo, and a 3D printed bracket.
 
 ## Demo
 
 ![Loop of the device flipping the light on and off](flip.gif)
 
+## Brackets
+
+* [Toggle/flip switch](https://cad.onshape.com/documents/8eab044576e49e483864e1f3/w/e6adcae5591acaec7c86fcd0/e/8c350fa1b01b175b739c588d?renderMode=0&uiState=6460784a30af470c88b68eaf)
+* [Rocker switch](https://www.thingiverse.com/thing:5217857)
+
 ## Installation
 
-1. 3D print the [bracket](https://www.thingiverse.com/thing:5217857), install an MG90S servo and a Raspberry Pi on it, and mount it to your light switch.
+1. 3D print one of the above brackets, install an MG90S servo and a Raspberry Pi on it, and mount it to your light switch.
 2. Install the correct toolchain for cross compiling to your Raspberry Pi.
 3. Clone the repo. If necessary, change the constants in the `servo` module to match the datasheet of the servo you're using.
 4. Build the crate, then transfer the executable and the `Rocket.toml` file to your Pi. [Enable hardware PWM](https://docs.golemparts.com/rppal/0.13.1/rppal/pwm/index.html#pwm-channels) on your Pi.
-5. Run the executable to generate an API key, found in the `config.toml` file. You can keep it running however you wish (I use [PM2](https://pm2.keymetrics.io)).
+5. Run the executable to generate an API key, found in the `config.toml` file. You can keep it running however you wish (I use systemd).
 
 ## Usage
 
